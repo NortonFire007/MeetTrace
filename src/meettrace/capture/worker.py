@@ -59,7 +59,12 @@ class AudioCaptureWorker(threading.Thread):
         self._stop_event = threading.Event()
         self._rebind_event = threading.Event()
         self._pause_event = threading.Event()
+        self._ready_event = threading.Event()
         self._initial_open_failed = False
+
+    def wait_ready(self, timeout: float = 3.0) -> bool:
+        """Block until the initial stream open attempt completes."""
+        return self._ready_event.wait(timeout=timeout)
 
     @property
     def is_stream_active(self) -> bool:
@@ -141,8 +146,11 @@ class AudioCaptureWorker(threading.Thread):
 
     def run(self) -> None:
         """Main worker capture loop."""
-        if not self._open_stream():
-            self._initial_open_failed = True
+        try:
+            if not self._open_stream():
+                self._initial_open_failed = True
+        finally:
+            self._ready_event.set()
 
         while not self._stop_event.is_set():
             # 1. Handle device rebind request

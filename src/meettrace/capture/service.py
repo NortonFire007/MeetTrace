@@ -114,8 +114,9 @@ class AudioCaptureService(AudioCapture):
             self._mic_worker.start()
             self._loopback_worker.start()
 
-            # Short grace period to allow workers to attempt stream initialisation
-            time.sleep(0.05)
+            # Wait for workers to finish their stream initialization attempts
+            self._mic_worker.wait_ready(timeout=2.0)
+            self._loopback_worker.wait_ready(timeout=2.0)
 
             # If both workers failed to open any stream, report fatal error
             if not self._mic_worker.is_stream_active and not self._loopback_worker.is_stream_active:

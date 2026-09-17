@@ -153,45 +153,46 @@ class WindowsAudioBackend:
 
     def open_stream(self, source: AudioSource, frames_per_buffer: int = 1024) -> AudioStream:
         """Open a new WASAPI stream for microphone or loopback."""
-        import pyaudiowpatch as pyaudio
+        with self._lock:
+            import pyaudiowpatch as pyaudio
 
-        pa = pyaudio.PyAudio()
-        try:
-            if source == "mic":
-                device_info = pa.get_default_wasapi_device(d_in=True)
-                channels = int(device_info["maxInputChannels"])
-                # Fallback to mono if device reports 0 or invalid channels
-                channels = max(1, min(channels, 2))
-                rate = int(device_info["defaultSampleRate"])
-                stream = pa.open(
-                    format=pyaudio.paInt16,
-                    channels=channels,
-                    rate=rate,
-                    input=True,
-                    input_device_index=int(device_info["index"]),
-                    frames_per_buffer=frames_per_buffer,
-                )
-            elif source == "loopback":
-                device_info = pa.get_default_wasapi_loopback()
-                channels = int(device_info["maxInputChannels"])
-                channels = max(1, min(channels, 2))
-                rate = int(device_info["defaultSampleRate"])
-                stream = pa.open(
-                    format=pyaudio.paInt16,
-                    channels=channels,
-                    rate=rate,
-                    input=True,
-                    input_device_index=int(device_info["index"]),
-                    frames_per_buffer=frames_per_buffer,
-                )
-            else:
-                raise ValueError(f"Unsupported audio source for stream creation: {source!r}")
+            pa = pyaudio.PyAudio()
+            try:
+                if source == "mic":
+                    device_info = pa.get_default_wasapi_device(d_in=True)
+                    channels = int(device_info["maxInputChannels"])
+                    # Fallback to mono if device reports 0 or invalid channels
+                    channels = max(1, min(channels, 2))
+                    rate = int(device_info["defaultSampleRate"])
+                    stream = pa.open(
+                        format=pyaudio.paInt16,
+                        channels=channels,
+                        rate=rate,
+                        input=True,
+                        input_device_index=int(device_info["index"]),
+                        frames_per_buffer=frames_per_buffer,
+                    )
+                elif source == "loopback":
+                    device_info = pa.get_default_wasapi_loopback()
+                    channels = int(device_info["maxInputChannels"])
+                    channels = max(1, min(channels, 2))
+                    rate = int(device_info["defaultSampleRate"])
+                    stream = pa.open(
+                        format=pyaudio.paInt16,
+                        channels=channels,
+                        rate=rate,
+                        input=True,
+                        input_device_index=int(device_info["index"]),
+                        frames_per_buffer=frames_per_buffer,
+                    )
+                else:
+                    raise ValueError(f"Unsupported audio source for stream creation: {source!r}")
 
-            return PyAudioStreamAdapter(stream=stream, sample_rate=rate, channels=channels)
-        except Exception:
-            with contextlib.suppress(OSError, RuntimeError):
-                pa.terminate()
-            raise
+                return PyAudioStreamAdapter(stream=stream, sample_rate=rate, channels=channels)
+            except Exception:
+                with contextlib.suppress(OSError, RuntimeError):
+                    pa.terminate()
+                raise
 
     def get_default_endpoint(self, flow: DeviceFlow) -> DeviceEndpointInfo:
         """Query default endpoint ID and friendly name using pycaw."""

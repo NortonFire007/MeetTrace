@@ -19,6 +19,9 @@ dependencies = [
   "numpy>=2.5.3",
 ]
 
+[project.scripts]
+meettrace = "meettrace.ui.app:main"
+
 [dependency-groups]
 dev = [
   "pytest>=8.3,<9",
