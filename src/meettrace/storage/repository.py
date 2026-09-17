@@ -217,6 +217,11 @@ class MeetingRepository:
                     duration_ms = parse_duration_to_ms(frontmatter["duration"])
                 if frontmatter.get("platform"):
                     source = {"platform": frontmatter["platform"]}
+                if frontmatter.get("url"):
+                    if isinstance(source, dict):
+                        source["url"] = frontmatter["url"]
+                    else:
+                        source = {"url": frontmatter["url"]}
                 if "languages" in frontmatter:
                     lang_items = [
                         l.strip() for l in frontmatter["languages"].split(",") if l.strip()

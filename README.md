@@ -1,66 +1,89 @@
 # MeetTrace
 
-MeetTrace is a local-first hybrid meeting recorder and transcription app for Windows.
+MeetTrace is a local-first hybrid meeting recorder and transcription app for Windows 10/11.
 
-## MVP direction
+---
 
-- **Desktop app:** Python + PySide6.
-- **Speech-to-text:** local Whisper-compatible engine (initial target: faster-whisper).
-- **Meeting storage:** Markdown + JSON artifacts grouped by local date.
-- **Summarization:** optional Gemini API after a meeting ends.
-- **Google Meet integration:** a lightweight Chrome extension detects/associates the Meet page and communicates with the desktop app; audio capture remains in the desktop app.
-- **UI:** system-tray app plus a small always-on-top floating recording bar.
+## Key Features
 
-The design intentionally keeps audio capture behind an interface until the Windows WASAPI/loopback spike identifies the most reliable implementation.
+- **100% Local Audio & Transcription:** Dual-channel capture (microphone + WASAPI system loopback) transcribed on-device with `faster-whisper`. No cloud STT services or bots joining calls.
+- **No Meeting Bots:** Records natively from your Windows Core Audio subsystem with zero participant injection.
+- **Companion Chrome Extension:** A lightweight Manifest V3 extension detects active Google Meet tabs and synchronizes meeting titles and URLs with the desktop app over an authenticated localhost bridge.
+- **Compact Floating Toolbar:** Unobtrusive, always-on-top pill bar with recording status, duration timer, pause/resume, and meeting context display.
+- **Durable Meeting Archive:** Saves human-readable Markdown notes (`meeting.md`) and rich JSON transcripts (`transcript.json`) organized by local date (`%USERPROFILE%\MeetTrace\meetings\YYYY\MM\DD\<id>\`).
+- **Optional Gemini Summarization:** Post-meeting executive summaries, decisions, and action items generated on-demand using Google Gemini API.
+- **Privacy-First Architecture:** Zero audio capture in the browser extension; secret token authentication; automated token/key redaction in logs.
 
-## Repository layout
+---
 
-```text
-meettrace/
-├── openspec/
-│   ├── config.yaml
-│   └── changes/001-mvp-foundation/
-├── src/meettrace/
-├── tests/
-├── extension/
-├── docs/
-├── pyproject.toml
-└── README.md
-```
+## Documentation
 
-## Development
+- 📖 **[User Guide & Installation Walkthrough](docs/USER_GUIDE.md)**: Detailed setup, Chrome extension pairing, Whisper model options, and troubleshooting.
+- 🔒 **[Privacy & Security Architecture](docs/PRIVACY.md)**: Security boundaries, local-first guarantees, permissions breakdown, and secret redaction.
+- 🎯 **[MVP Overview](docs/mvp.md)**: Product boundaries and user journey.
 
-Python 3.12+ (below 3.14) is the current project target.
+---
 
-Recommended local workflow with `uv`:
+## Quick Start (Running from Source)
 
+### Prerequisites
+- Windows 10 or Windows 11 (64-bit)
+- Python 3.12+ (below 3.14)
+- [`uv`](https://docs.astral.sh/uv/) package manager
+
+### 1. Setup Virtual Environment
 ```powershell
 uv venv
 uv sync --dev
 ```
 
-Run tests:
+### 2. Run Desktop App
+```powershell
+uv run python -m meettrace.ui.app
+```
 
+### 3. Setup Chrome Extension (Optional, for Google Meet)
+1. Open Google Chrome and visit `chrome://extensions/`.
+2. Enable **Developer mode** in the top right corner.
+3. Click **Load unpacked** and select the `extension/` directory.
+4. In MeetTrace desktop app, open **Settings (⚙)** and copy the **Bridge Secret Token**.
+5. Click the MeetTrace extension icon in Chrome, paste the token, and click **Save & Connect**.
+
+---
+
+## Running Tests & Quality Checks
+
+Run the automated test suite (including unit, integration, and stress tests):
 ```powershell
 uv run pytest
 ```
 
+Check code formatting and linting with Ruff:
+```powershell
+uv run ruff check .
+uv run ruff format --check .
+```
+
+---
+
+## Packaging Windows Executable
+
+MeetTrace can be packaged into a standalone Windows executable (`MeetTrace.exe`):
+
+```powershell
+uv run python scripts/build_windows_exe.py
+```
+
+The output will be generated at `dist/MeetTrace/MeetTrace.exe`.
+
+---
+
 ## OpenSpec
 
 OpenSpec is the source-of-truth workflow for planned changes. The current change is
-`001-mvp-foundation` and its artifacts are under `openspec/changes/001-mvp-foundation/`.
+`001-mvp-foundation` under `openspec/changes/001-mvp-foundation/`.
 
-Install the CLI on the development machine if needed:
-
+Validate specification compliance:
 ```powershell
-npm install -g @fission-ai/openspec@latest
-openspec --version
+openspec validate --all
 ```
-
-Then initialize the repository for your AI tool (Cursor is supported):
-
-```powershell
-openspec init
-```
-
-Do not replace the existing change artifacts; use them as the current planning baseline.

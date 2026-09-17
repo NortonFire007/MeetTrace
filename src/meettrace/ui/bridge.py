@@ -35,18 +35,30 @@ class AudioCaptureQtBridge(QObject, BaseAudioCaptureObserver):
     def on_state_changed(self, state: CaptureState) -> None:
         """Handle state change notification from AudioCapture and emit Qt signal."""
         logger.debug("AudioCaptureQtBridge emitting state_changed -> %s", state.value)
-        self.state_changed.emit(state)
+        try:
+            self.state_changed.emit(state)
+        except RuntimeError:
+            pass
 
     def on_error(self, error: CaptureError) -> None:
         """Handle capture error from AudioCapture and emit Qt signal."""
         logger.debug("AudioCaptureQtBridge emitting error_occurred -> %s", error.message)
-        self.error_occurred.emit(error)
+        try:
+            self.error_occurred.emit(error)
+        except RuntimeError:
+            pass
 
     def on_device_changed(self, event: DeviceChangeEvent) -> None:
         """Handle device switch notification from AudioCapture and emit Qt signal."""
         logger.debug("AudioCaptureQtBridge emitting device_changed -> %s", event.friendly_name)
-        self.device_changed.emit(event)
+        try:
+            self.device_changed.emit(event)
+        except RuntimeError:
+            pass
 
     def on_audio_chunk(self, chunk: AudioChunk) -> None:
         """Handle audio chunk from AudioCapture and emit Qt signal."""
-        self.audio_chunk_received.emit(chunk)
+        try:
+            self.audio_chunk_received.emit(chunk)
+        except RuntimeError:
+            pass

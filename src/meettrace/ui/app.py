@@ -20,6 +20,7 @@ from meettrace.bridge.token import get_or_create_bridge_token
 from meettrace.capture.protocol import AudioCapture
 from meettrace.capture.service import AudioCaptureService
 from meettrace.config import load_dotenv
+from meettrace.logging import setup_logging
 from meettrace.storage.repository import MeetingRepository
 from meettrace.ui.controller import RecordingSessionController
 from meettrace.ui.main_window import MainWindow
@@ -224,10 +225,18 @@ class MeetTraceApp:
 
 def main() -> int:
     """Entry point for running MeetTrace desktop application."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
+    if "--version" in sys.argv:
+        print("MeetTrace v0.1.0")
+        return 0
+
+    log_path = setup_logging()
+    logger.info("MeetTrace starting (log file: %s)", log_path)
+
+    if "--check-startup" in sys.argv:
+        logger.info("MeetTrace startup check OK")
+        print("MeetTrace startup check OK")
+        return 0
+
     app = MeetTraceApp()
     return app.run()
 

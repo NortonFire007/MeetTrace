@@ -74,8 +74,10 @@ def render_meeting_markdown(
         langs_list = "unknown"
 
     platform = None
-    if isinstance(metadata.source, dict) and metadata.source.get("platform"):
-        platform = metadata.source["platform"]
+    url = None
+    if isinstance(metadata.source, dict):
+        platform = metadata.source.get("platform")
+        url = metadata.source.get("url")
     elif isinstance(metadata.source, str) and metadata.source:
         platform = metadata.source
 
@@ -90,6 +92,8 @@ def render_meeting_markdown(
     ]
     if platform:
         lines.append(f"platform: {platform}")
+    if url:
+        lines.append(f"url: {url}")
     lines.extend(
         [
             f"schema_version: {metadata.schema_version}",

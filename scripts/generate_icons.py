@@ -32,6 +32,11 @@ def generate_icons() -> None:
         img.save(str(target))
         print(f"Generated {target}")
 
+        if size == 48:
+            ico_target = icons_dir / "app_icon.ico"
+            img.save(str(ico_target))
+            print(f"Generated {ico_target}")
+
 
 if __name__ == "__main__":
     generate_icons()
