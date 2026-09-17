@@ -30,36 +30,48 @@ class InvalidStateTransitionError(ValueError):
 # Mapping of permitted state transitions for CaptureState.
 VALID_CAPTURE_STATE_TRANSITIONS: dict[CaptureState, frozenset[CaptureState]] = {
     CaptureState.IDLE: frozenset({CaptureState.STARTING}),
-    CaptureState.STARTING: frozenset({
-        CaptureState.RECORDING,
-        CaptureState.STOPPED,
-        CaptureState.ERROR,
-    }),
-    CaptureState.RECORDING: frozenset({
-        CaptureState.PAUSED,
-        CaptureState.REBINDING,
-        CaptureState.STOPPED,
-        CaptureState.ERROR,
-    }),
-    CaptureState.REBINDING: frozenset({
-        CaptureState.RECORDING,
-        CaptureState.STOPPED,
-        CaptureState.ERROR,
-    }),
-    CaptureState.PAUSED: frozenset({
-        CaptureState.RECORDING,
-        CaptureState.STOPPED,
-        CaptureState.ERROR,
-    }),
-    CaptureState.STOPPED: frozenset({
-        CaptureState.IDLE,
-        CaptureState.STARTING,
-    }),
-    CaptureState.ERROR: frozenset({
-        CaptureState.IDLE,
-        CaptureState.STARTING,
-        CaptureState.STOPPED,
-    }),
+    CaptureState.STARTING: frozenset(
+        {
+            CaptureState.RECORDING,
+            CaptureState.STOPPED,
+            CaptureState.ERROR,
+        }
+    ),
+    CaptureState.RECORDING: frozenset(
+        {
+            CaptureState.PAUSED,
+            CaptureState.REBINDING,
+            CaptureState.STOPPED,
+            CaptureState.ERROR,
+        }
+    ),
+    CaptureState.REBINDING: frozenset(
+        {
+            CaptureState.RECORDING,
+            CaptureState.STOPPED,
+            CaptureState.ERROR,
+        }
+    ),
+    CaptureState.PAUSED: frozenset(
+        {
+            CaptureState.RECORDING,
+            CaptureState.STOPPED,
+            CaptureState.ERROR,
+        }
+    ),
+    CaptureState.STOPPED: frozenset(
+        {
+            CaptureState.IDLE,
+            CaptureState.STARTING,
+        }
+    ),
+    CaptureState.ERROR: frozenset(
+        {
+            CaptureState.IDLE,
+            CaptureState.STARTING,
+            CaptureState.STOPPED,
+        }
+    ),
 }
 
 
@@ -142,9 +154,7 @@ class DeviceChangeEvent:
 
     def __post_init__(self) -> None:
         if self.flow not in ("render", "capture"):
-            raise ValueError(
-                f"Invalid device flow: {self.flow!r}. Must be 'render' or 'capture'."
-            )
+            raise ValueError(f"Invalid device flow: {self.flow!r}. Must be 'render' or 'capture'.")
         if not self.endpoint_id:
             raise ValueError("endpoint_id must not be empty.")
         if self.timestamp_ms < 0:

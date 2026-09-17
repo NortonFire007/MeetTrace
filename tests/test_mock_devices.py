@@ -172,9 +172,7 @@ class MockDeviceAudioBackend:
             spec = self.devices[device_id]
             return DeviceEndpointInfo(spec.device_id, spec.friendly_name)
 
-    def start_notifications(
-        self, callback: Callable[[DeviceFlow, str, str], None]
-    ) -> None:
+    def start_notifications(self, callback: Callable[[DeviceFlow, str, str], None]) -> None:
         with self._lock:
             self._notification_callback = callback
 

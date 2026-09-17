@@ -17,6 +17,7 @@ dependencies = [
   "comtypes>=1.4.16",
   "pycaw>=20251023",
   "numpy>=2.5.3",
+  "faster-whisper>=1.1,<2",
 ]
 
 [project.scripts]

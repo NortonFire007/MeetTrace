@@ -187,7 +187,9 @@ class RecordingSessionController(QObject):
 
         previous_state = self._state
         self._state = new_state
-        logger.info("RecordingSessionController state transition: %s -> %s", previous_state, new_state)
+        logger.info(
+            "RecordingSessionController state transition: %s -> %s", previous_state, new_state
+        )
 
         # Manage timer lifecycle according to new state
         if new_state == CaptureState.RECORDING:

@@ -106,9 +106,7 @@ class MockAudioBackend:
             return DeviceEndpointInfo("mock-render-id", "Mock Speakers")
         return DeviceEndpointInfo("mock-capture-id", "Mock Microphone")
 
-    def start_notifications(
-        self, callback: Callable[[DeviceFlow, str, str], None]
-    ) -> None:
+    def start_notifications(self, callback: Callable[[DeviceFlow, str, str], None]) -> None:
         self.notification_callback = callback
         self.notifications_started = True
         self.notifications_stopped = False
@@ -117,7 +115,9 @@ class MockAudioBackend:
         self.notification_callback = None
         self.notifications_stopped = True
 
-    def simulate_device_change(self, flow: DeviceFlow, endpoint_id: str, friendly_name: str) -> None:
+    def simulate_device_change(
+        self, flow: DeviceFlow, endpoint_id: str, friendly_name: str
+    ) -> None:
         if self.notification_callback is not None:
             self.notification_callback(flow, endpoint_id, friendly_name)
 

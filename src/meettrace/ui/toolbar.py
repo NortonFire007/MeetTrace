@@ -71,7 +71,9 @@ class FloatingRecordingToolbar(QWidget):
         """Create and layout the toolbar widgets."""
         # Outer root layout providing space for the drop shadow
         outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(CONTAINER_MARGIN, CONTAINER_MARGIN, CONTAINER_MARGIN, CONTAINER_MARGIN)
+        outer_layout.setContentsMargins(
+            CONTAINER_MARGIN, CONTAINER_MARGIN, CONTAINER_MARGIN, CONTAINER_MARGIN
+        )
 
         # Central rounded card container
         self._container = QWidget(self)
@@ -198,9 +200,7 @@ class FloatingRecordingToolbar(QWidget):
         self._status_label.setText(label_text)
 
         # Update indicator dot color
-        self._indicator_dot.setStyleSheet(
-            f"background-color: {style.color}; border-radius: 4px;"
-        )
+        self._indicator_dot.setStyleSheet(f"background-color: {style.color}; border-radius: 4px;")
 
         # Clear error tooltips if transitioning away from Error
         if state != CaptureState.ERROR:

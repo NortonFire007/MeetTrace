@@ -87,9 +87,7 @@ class AudioBackend(Protocol):
         """
         ...
 
-    def start_notifications(
-        self, callback: Callable[[DeviceFlow, str, str], None]
-    ) -> None:
+    def start_notifications(self, callback: Callable[[DeviceFlow, str, str], None]) -> None:
         """Register a callback for Windows default audio device change notifications.
 
         Args:
@@ -219,9 +217,7 @@ class WindowsAudioBackend:
         finally:
             comtypes.CoUninitialize()
 
-    def start_notifications(
-        self, callback: Callable[[DeviceFlow, str, str], None]
-    ) -> None:
+    def start_notifications(self, callback: Callable[[DeviceFlow, str, str], None]) -> None:
         """Register COM notification listener for default device switches."""
         import comtypes
         from pycaw.pycaw import AudioUtilities, IMMNotificationClient
@@ -247,9 +243,7 @@ class WindowsAudioBackend:
                         # 0 = eConsole, 2 = eCommunications
                         if role_int in (0, 2):
                             flow_str: DeviceFlow = "render" if flow_int == 0 else "capture"
-                            backend_ref._dispatch_device_change(
-                                flow_str, pwstr_default_device_id
-                            )
+                            backend_ref._dispatch_device_change(flow_str, pwstr_default_device_id)
                         return 0
 
                     def OnDeviceStateChanged(self, pwstr_device_id: str, dw_new_state: int) -> int:

@@ -349,18 +349,15 @@ class AudioCaptureSpike:
                                 loop_samples, int(loop_info["defaultSampleRate"]), self.target_rate
                             )
                         if loop_samples.shape[1] == 1:
-                            loop_samples = np.column_stack(
-                                [loop_samples[:, 0], loop_samples[:, 0]]
-                            )
+                            loop_samples = np.column_stack([loop_samples[:, 0], loop_samples[:, 0]])
 
                     # Mix signals: align lengths and sum with clipping
                     mixed: np.ndarray | None = None
                     if mic_samples is not None and loop_samples is not None:
                         min_len = min(len(mic_samples), len(loop_samples))
-                        summed = (
-                            mic_samples[:min_len].astype(np.int32)
-                            + loop_samples[:min_len].astype(np.int32)
-                        )
+                        summed = mic_samples[:min_len].astype(np.int32) + loop_samples[
+                            :min_len
+                        ].astype(np.int32)
                         mixed = np.clip(summed, -32768, 32767).astype(np.int16)
                     elif mic_samples is not None:
                         mixed = mic_samples
