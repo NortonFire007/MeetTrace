@@ -81,6 +81,7 @@ class AudioCaptureWorker(threading.Thread):
     def stop(self) -> None:
         """Signal the worker to terminate and unblock any waiting events."""
         self._stop_event.set()
+        self._rebind_event.set()
 
     def _open_stream(self) -> bool:
         """Attempt to open the audio stream from the backend."""
@@ -147,6 +148,8 @@ class AudioCaptureWorker(threading.Thread):
             # 1. Handle device rebind request
             if self._rebind_event.is_set():
                 self._rebind_event.clear()
+                if self._stop_event.is_set():
+                    break
                 self._perform_rebind()
                 continue
 
@@ -157,8 +160,8 @@ class AudioCaptureWorker(threading.Thread):
 
             # 3. Handle stream absent (e.g. initial failure or failed rebind)
             if self._stream is None:
-                # Wait for rebind signal or stop signal
-                self._stop_event.wait(timeout=0.5)
+                # Wait for rebind notification or stop signal
+                self._rebind_event.wait(timeout=0.5)
                 continue
 
             # 4. Read audio data from stream
