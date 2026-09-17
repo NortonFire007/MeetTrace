@@ -71,6 +71,12 @@ class TranscriptionService(BaseAudioCaptureObserver):
 
         self._session_start_time_iso: str = ""
         self._total_audio_duration_ms: int = 0
+        self._last_metadata: TranscriptMetadata | None = None
+
+    @property
+    def last_metadata(self) -> TranscriptMetadata | None:
+        """Metadata calculated during the most recent completed transcription session."""
+        return self._last_metadata
 
     @property
     def config(self) -> TranscriptionConfig:
@@ -293,6 +299,7 @@ class TranscriptionService(BaseAudioCaptureObserver):
             segment_count=total_segments,
             created_at=self._session_start_time_iso,
         )
+        self._last_metadata = metadata
 
         with self._observers_lock:
             observers = list(self._observers)

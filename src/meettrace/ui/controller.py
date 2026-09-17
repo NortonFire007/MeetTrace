@@ -8,7 +8,8 @@ state with AudioCaptureService events.
 from __future__ import annotations
 
 import logging
-from typing import Any, Final
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Final
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -20,6 +21,7 @@ from meettrace.capture.models import (
     DeviceChangeEvent,
 )
 from meettrace.capture.protocol import AudioCapture
+from meettrace.storage.writer import generate_meeting_id
 from meettrace.ui.bridge import AudioCaptureQtBridge
 from meettrace.ui.state import (
     can_pause_recording,
@@ -27,6 +29,12 @@ from meettrace.ui.state import (
     can_start_recording,
     can_stop_recording,
 )
+
+if TYPE_CHECKING:
+    from meettrace.storage.repository import MeetingRepository
+    from meettrace.storage.store import MeetingArtifactStore
+    from meettrace.transcription.models import TranscriptMetadata, TranscriptSegment
+    from meettrace.transcription.service import TranscriptionService
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +61,23 @@ class RecordingSessionController(QObject):
     device_changed = Signal(DeviceChangeEvent)
     meet_context_changed = Signal(object)  # MeetMetadata | None
     bridge_status_changed = Signal(bool, str)  # (is_connected, message)
+    meeting_saved = Signal(str)  # Emits meeting_id when artifacts are durably persisted
 
     def __init__(
         self,
         capture_service: AudioCapture,
+        transcription_service: TranscriptionService | None = None,
+        artifact_store: MeetingArtifactStore | None = None,
+        repository: MeetingRepository | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._capture_service = capture_service
+        self._transcription_service = transcription_service
+        self._artifact_store = artifact_store
+        self._repository = repository
+        self._session_start_time: datetime | None = None
+
         self._state: CaptureState = capture_service.state
         self._elapsed_seconds: int = 0
         self._last_error: CaptureError | None = None
@@ -118,6 +135,8 @@ class RecordingSessionController(QObject):
             return
 
         self._last_error = None
+        self._session_start_time = datetime.now(UTC)
+
         # Associate pending or existing Meet metadata with this recording session
         if self._pending_meet_context is not None and self._current_meet_context is None:
             self._current_meet_context = self._pending_meet_context
@@ -172,7 +191,7 @@ class RecordingSessionController(QObject):
             self.pause()
 
     def stop(self) -> None:
-        """Stop the active recording session."""
+        """Stop the active recording session and persist meeting artifacts."""
         if not can_stop_recording(self._state):
             logger.warning("Ignoring stop() action; current state is %s", self._state.value)
             return
@@ -182,6 +201,47 @@ class RecordingSessionController(QObject):
         except (OSError, RuntimeError, ValueError) as exc:
             logger.exception("Failed to stop audio capture")
             self._handle_action_exception("Failed to stop audio recording.", exc)
+
+        if self._artifact_store is not None:
+            self._save_session_artifacts()
+
+    def _save_session_artifacts(self) -> str | None:
+        """Persist transcript and markdown artifacts for the completed session."""
+        if self._artifact_store is None:
+            return None
+
+        try:
+            started_at = self._session_start_time or datetime.now(UTC)
+            ended_at = datetime.now(UTC)
+            mid = generate_meeting_id(started_at)
+            session_meta = self.get_session_metadata()
+
+            segments: list[TranscriptSegment] = []
+            meta: TranscriptMetadata | None = None
+            if self._transcription_service is not None:
+                self._transcription_service.stop()
+                segments = self._transcription_service.segments
+                meta = getattr(self._transcription_service, "last_metadata", None)
+
+            json_path, md_path = self._artifact_store.save_raw_transcript(
+                meeting_id=mid,
+                segments=segments,
+                transcript_metadata=meta,
+                started_at=started_at,
+                ended_at=ended_at,
+                title=session_meta["title"],
+                source=session_meta["source"],
+            )
+            logger.info("Session artifacts saved cleanly [%s]: %s, %s", mid, json_path, md_path)
+
+            if self._repository is not None:
+                self._repository.refresh()
+
+            self.meeting_saved.emit(mid)
+            return mid
+        except Exception:
+            logger.exception("Failed to persist session artifacts")
+            return None
 
     def cleanup(self) -> None:
         """Unregister observers and stop active timers."""

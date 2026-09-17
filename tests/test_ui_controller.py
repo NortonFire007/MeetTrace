@@ -210,3 +210,44 @@ def test_controller_start_exception_handling() -> None:
     assert "No audio devices detected" in received_errors[0].message
 
     controller.cleanup()
+
+
+def test_controller_stop_automatically_saves_artifacts(tmp_path) -> None:
+    """Verify stop() automatically persists transcript.json and meeting.md and refreshes repository."""
+    from meettrace.storage.repository import MeetingRepository
+    from meettrace.storage.store import MeetingArtifactStore
+
+    store = MeetingArtifactStore(storage_root=tmp_path)
+    repo = MeetingRepository(storage_root=tmp_path)
+    capture = DummyAudioCapture()
+
+    controller = RecordingSessionController(
+        capture_service=capture,
+        artifact_store=store,
+        repository=repo,
+    )
+
+    saved_meeting_ids: list[str] = []
+    controller.meeting_saved.connect(saved_meeting_ids.append)
+
+    controller.start()
+    assert controller.state == CaptureState.RECORDING
+
+    controller.stop()
+    assert controller.state == CaptureState.STOPPED
+
+    # Verification: meeting_saved signal emitted
+    assert len(saved_meeting_ids) == 1
+    mid = saved_meeting_ids[0]
+
+    # Artifacts exist on disk
+    meeting_dir = store.resolve_meeting_dir(mid)
+    assert (meeting_dir / "transcript.json").is_file()
+    assert (meeting_dir / "meeting.md").is_file()
+
+    # Repository indexed the meeting immediately
+    meetings = repo.list_meetings()
+    assert len(meetings) == 1
+    assert meetings[0].meeting_id == mid
+
+    controller.cleanup()

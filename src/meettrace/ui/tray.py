@@ -151,6 +151,16 @@ class SystemTrayManager(QObject):
         self._tray_icon.activated.connect(self._on_tray_activated)
         self._tray_icon.show()
 
+    def show_notification(self, title: str, message: str) -> None:
+        """Display a native desktop system notification balloon."""
+        if self._tray_icon.isSystemTrayAvailable():
+            self._tray_icon.showMessage(
+                title,
+                message,
+                QSystemTrayIcon.MessageIcon.Information,
+                4000,
+            )
+
     def _connect_signals(self) -> None:
         """Connect to controller signals to reflect recording state in tray menu."""
         self._controller.state_changed.connect(self._update_state)

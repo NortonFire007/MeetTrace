@@ -22,6 +22,8 @@ from meettrace.capture.service import AudioCaptureService
 from meettrace.config import load_dotenv
 from meettrace.logging import setup_logging
 from meettrace.storage.repository import MeetingRepository
+from meettrace.storage.store import MeetingArtifactStore
+from meettrace.transcription.service import TranscriptionService
 from meettrace.ui.controller import RecordingSessionController
 from meettrace.ui.main_window import MainWindow
 from meettrace.ui.state import can_stop_recording
@@ -53,15 +55,28 @@ class MeetTraceApp:
         # Crucial for system tray persistence: do not terminate when windows close
         self._app.setQuitOnLastWindowClosed(False)
 
-        # Initialize audio capture subsystem and controller
+        # Initialize meeting repository and durable artifact store
+        self._repository = repository if repository is not None else MeetingRepository()
+        self._artifact_store = MeetingArtifactStore(storage_root=self._repository.storage_root)
+        self._main_window = MainWindow(self._repository)
+
+        # Initialize audio capture subsystem
         self._capture_service = (
             capture_service if capture_service is not None else AudioCaptureService()
         )
-        self._controller = RecordingSessionController(self._capture_service)
 
-        # Initialize meeting repository and main window
-        self._repository = repository if repository is not None else MeetingRepository()
-        self._main_window = MainWindow(self._repository)
+        # Initialize speech transcription service and connect to audio capture
+        self._transcription_service = TranscriptionService()
+        self._capture_service.add_observer(self._transcription_service)
+
+        # Initialize controller with capture, transcription, and storage services
+        self._controller = RecordingSessionController(
+            capture_service=self._capture_service,
+            transcription_service=self._transcription_service,
+            artifact_store=self._artifact_store,
+            repository=self._repository,
+        )
+        self._controller.meeting_saved.connect(self._on_meeting_saved)
 
         # Initialize floating toolbar utility overlay
         self._toolbar = FloatingRecordingToolbar(self._controller)
@@ -152,6 +167,17 @@ class MeetTraceApp:
         """Refresh meetings catalog and views in the main window."""
         self._main_window.refresh_meetings()
 
+    def _on_meeting_saved(self, meeting_id: str) -> None:
+        """Handle automatic refresh and notification when a meeting is saved."""
+        logger.info("Meeting saved successfully: %s", meeting_id)
+        self.refresh_history()
+        meta = self._repository.get_meeting(meeting_id)
+        title = meta.title if meta else "Meeting"
+        self._tray_manager.show_notification(
+            "Meeting Saved",
+            f"Meeting '{title}' saved to local archive.",
+        )
+
     def _get_bridge_status(self) -> dict[str, Any]:
         """Query desktop app operational state for the extension status check."""
         return {
@@ -221,6 +247,16 @@ class MeetTraceApp:
     def bridge_adapter(self) -> MeetBridgeQtAdapter:
         """Return the bridge Qt adapter instance."""
         return self._bridge_adapter
+
+    @property
+    def artifact_store(self) -> MeetingArtifactStore:
+        """Return the meeting artifact store instance."""
+        return self._artifact_store
+
+    @property
+    def transcription_service(self) -> TranscriptionService:
+        """Return the transcription service instance."""
+        return self._transcription_service
 
 
 def main() -> int:

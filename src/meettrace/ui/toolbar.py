@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Final
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QMouseEvent
 from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
@@ -182,6 +182,12 @@ class FloatingRecordingToolbar(QWidget):
         self._controller.error_occurred.connect(self._on_error_occurred)
         self._controller.meet_context_changed.connect(self._on_meet_context_changed)
         self._controller.bridge_status_changed.connect(self._on_bridge_status_changed)
+        self._controller.meeting_saved.connect(self._on_meeting_saved)
+
+    def _on_meeting_saved(self, meeting_id: str) -> None:
+        """Provide brief visual feedback on toolbar when a meeting is saved."""
+        self._status_label.setText("Saved!")
+        QTimer.singleShot(2500, lambda: self._update_state_ui(self._controller.state))
 
     # -------------------------------------------------------------------------
     # Dragging implementation without stealing keyboard focus
