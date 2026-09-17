@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "MeetTrace - Google Meet Bridge",
+  "version": "1.0.0",
+  "description": "Detects Google Meet lifecycle and metadata and connects to the local MeetTrace desktop application.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "src/shared/constants.js",
+        "src/content/meet_detector.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "src/options/options.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "MeetTrace Google Meet Bridge"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": false
+  }
+}

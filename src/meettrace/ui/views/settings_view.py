@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings, Qt, QTimer
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -17,6 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from meettrace.bridge.server import DEFAULT_BRIDGE_PORT
+from meettrace.bridge.token import get_or_create_bridge_token
 from meettrace.summary.gemini import (
     AVAILABLE_GEMINI_MODELS,
     DEFAULT_GEMINI_MODEL,
@@ -26,7 +29,10 @@ from meettrace.summary.gemini import (
 from meettrace.ui.theme import (
     COLOR_BG_CARD,
     COLOR_BORDER_DEFAULT,
+    COLOR_PRIMARY,
+    COLOR_PRIMARY_HOVER,
     COLOR_PRIMARY_SOFT,
+    COLOR_TEXT_MUTED,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
     FONT_FAMILY,
@@ -208,6 +214,129 @@ class SettingsView(QWidget):
 
         layout.addWidget(card)
 
+        # ---------------------------------------------------------------------
+        # 3. Google Meet Chrome Bridge Card
+        # ---------------------------------------------------------------------
+        bridge_card = QFrame(self)
+        bridge_card.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {COLOR_BG_CARD};
+                border: 1px solid {COLOR_BORDER_DEFAULT};
+                border-radius: 10px;
+                padding: 18px 20px;
+            }}
+            """
+        )
+        bridge_layout = QVBoxLayout(bridge_card)
+        bridge_layout.setSpacing(12)
+
+        bridge_title = QLabel("Chrome Google Meet Bridge", bridge_card)
+        bridge_title.setStyleSheet(
+            f"font-family: {FONT_FAMILY}; font-size: 15px; font-weight: 600; color: {COLOR_TEXT_PRIMARY};"
+        )
+        bridge_layout.addWidget(bridge_title)
+
+        bridge_desc = QLabel(
+            "Connect the MeetTrace Chrome extension to automatically associate meeting title, "
+            "room URL, and lifecycle events with your recordings. The extension communicates over "
+            "an authenticated localhost loopback (127.0.0.1) and never accesses audio.",
+            bridge_card,
+        )
+        bridge_desc.setStyleSheet(
+            f"font-family: {FONT_FAMILY}; font-size: 12px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.4;"
+        )
+        bridge_desc.setWordWrap(True)
+        bridge_layout.addWidget(bridge_desc)
+
+        # Status row
+        status_row = QHBoxLayout()
+        status_tag = QLabel("Bridge Status:", bridge_card)
+        status_tag.setStyleSheet(
+            f"font-family: {FONT_FAMILY}; font-size: 12px; font-weight: 600; color: {COLOR_TEXT_PRIMARY};"
+        )
+        status_row.addWidget(status_tag)
+
+        self._bridge_status_label = QLabel(
+            f"Active on 127.0.0.1:{DEFAULT_BRIDGE_PORT}", bridge_card
+        )
+        self._bridge_status_label.setStyleSheet(
+            "font-family: 'Consolas', monospace; font-size: 11px; color: #065F46; background-color: #ECFDF5; border-radius: 4px; padding: 2px 6px;"
+        )
+        status_row.addWidget(self._bridge_status_label)
+        status_row.addStretch(1)
+        bridge_layout.addLayout(status_row)
+
+        # Token row
+        token_label = QLabel("Bridge Authentication Token", bridge_card)
+        token_label.setStyleSheet(
+            f"font-family: {FONT_FAMILY}; font-size: 12px; font-weight: 600; color: {COLOR_TEXT_PRIMARY}; margin-top: 4px;"
+        )
+        bridge_layout.addWidget(token_label)
+
+        token_row = QHBoxLayout()
+        self._token = get_or_create_bridge_token()
+        self._token_input = QLineEdit(self._token, bridge_card)
+        self._token_input.setReadOnly(True)
+        self._token_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._token_input.setStyleSheet(get_search_input_stylesheet())
+        token_row.addWidget(self._token_input, stretch=1)
+
+        self._show_token_btn = QPushButton("Show", bridge_card)
+        self._show_token_btn.setCheckable(True)
+        self._show_token_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: transparent;
+                border: 1px solid {COLOR_BORDER_DEFAULT};
+                border-radius: 6px;
+                color: {COLOR_TEXT_SECONDARY};
+                font-family: {FONT_FAMILY};
+                font-size: 12px;
+                padding: 6px 12px;
+            }}
+            """
+        )
+        self._show_token_btn.toggled.connect(self._toggle_token_visibility)
+        token_row.addWidget(self._show_token_btn)
+
+        self._copy_token_btn = QPushButton("Copy Token", bridge_card)
+        self._copy_token_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {COLOR_PRIMARY};
+                border: 1px solid {COLOR_PRIMARY};
+                border-radius: 6px;
+                color: #FFFFFF;
+                font-family: {FONT_FAMILY};
+                font-size: 12px;
+                font-weight: 600;
+                padding: 6px 14px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_PRIMARY_HOVER};
+            }}
+            """
+        )
+        self._copy_token_btn.clicked.connect(self._copy_token_to_clipboard)
+        token_row.addWidget(self._copy_token_btn)
+
+        bridge_layout.addLayout(token_row)
+
+        # Fallback note
+        fallback_note = QLabel(
+            "Manual Fallback: If the extension is disabled or Google Meet detection is unavailable, "
+            "recording remains 100% operational with manual toolbar controls.",
+            bridge_card,
+        )
+        fallback_note.setStyleSheet(
+            f"font-family: {FONT_FAMILY}; font-size: 11px; color: {COLOR_TEXT_MUTED}; font-style: italic;"
+        )
+        fallback_note.setWordWrap(True)
+        bridge_layout.addWidget(fallback_note)
+
+        layout.addWidget(bridge_card)
+
     def _on_key_changed(self, text: str) -> None:
         """Persist API key to QSettings."""
         self._settings.setValue("gemini_api_key", text.strip())
@@ -241,3 +370,42 @@ class SettingsView(QWidget):
     def gemini_model_combo(self) -> QComboBox:
         """Return model combobox for testing."""
         return self._model_combo
+
+    def _toggle_token_visibility(self, checked: bool) -> None:
+        """Toggle token input echo mode between Password and Normal."""
+        if checked:
+            self._token_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._show_token_btn.setText("Hide")
+        else:
+            self._token_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self._show_token_btn.setText("Show")
+
+    def _copy_token_to_clipboard(self) -> None:
+        """Copy bridge authentication token to clipboard and show temporary feedback."""
+        clipboard = QApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setText(self._token)
+        self._copy_token_btn.setText("Copied!")
+        QTimer.singleShot(2000, lambda: self._copy_token_btn.setText("Copy Token"))
+
+    def set_bridge_status(self, is_running: bool, message: str) -> None:
+        """Update bridge status display label."""
+        self._bridge_status_label.setText(message)
+        if is_running:
+            self._bridge_status_label.setStyleSheet(
+                "font-family: 'Consolas', monospace; font-size: 11px; color: #065F46; background-color: #ECFDF5; border-radius: 4px; padding: 2px 6px;"
+            )
+        else:
+            self._bridge_status_label.setStyleSheet(
+                "font-family: 'Consolas', monospace; font-size: 11px; color: #991B1B; background-color: #FEF2F2; border-radius: 4px; padding: 2px 6px;"
+            )
+
+    @property
+    def token_input(self) -> QLineEdit:
+        """Return token input widget for testing."""
+        return self._token_input
+
+    @property
+    def bridge_status_label(self) -> QLabel:
+        """Return bridge status label for testing."""
+        return self._bridge_status_label

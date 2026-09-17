@@ -8,10 +8,11 @@ state with AudioCaptureService events.
 from __future__ import annotations
 
 import logging
-from typing import Final
+from typing import Any, Final
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
+from meettrace.bridge.models import MeetMetadata
 from meettrace.capture.models import (
     CaptureError,
     CaptureErrorCategory,
@@ -50,6 +51,8 @@ class RecordingSessionController(QObject):
     elapsed_time_changed = Signal(int, str)  # (seconds, formatted_string)
     error_occurred = Signal(CaptureError)
     device_changed = Signal(DeviceChangeEvent)
+    meet_context_changed = Signal(object)  # MeetMetadata | None
+    bridge_status_changed = Signal(bool, str)  # (is_connected, message)
 
     def __init__(
         self,
@@ -61,6 +64,13 @@ class RecordingSessionController(QObject):
         self._state: CaptureState = capture_service.state
         self._elapsed_seconds: int = 0
         self._last_error: CaptureError | None = None
+
+        # Google Meet bridge and context tracking
+        self._current_meet_context: MeetMetadata | None = None
+        self._pending_meet_context: MeetMetadata | None = None
+        self._session_meet_metadata: MeetMetadata | None = None
+        self._bridge_connected: bool = False
+        self._bridge_status_message: str = "Not detected"
 
         # Elapsed time timer
         self._timer = QTimer(self)
@@ -108,6 +118,15 @@ class RecordingSessionController(QObject):
             return
 
         self._last_error = None
+        # Associate pending or existing Meet metadata with this recording session
+        if self._pending_meet_context is not None and self._current_meet_context is None:
+            self._current_meet_context = self._pending_meet_context
+            self._pending_meet_context = None
+
+        if self._current_meet_context is not None:
+            self._session_meet_metadata = self._current_meet_context
+            self.meet_context_changed.emit(self._current_meet_context)
+
         try:
             self._capture_service.start()
         except (OSError, RuntimeError, ValueError) as exc:
@@ -241,3 +260,103 @@ class RecordingSessionController(QObject):
             underlying_exception=exc,
         )
         self._on_backend_error_occurred(error)
+
+    # -------------------------------------------------------------------------
+    # Google Meet Bridge Lifecycle & Metadata
+    # -------------------------------------------------------------------------
+    @property
+    def current_meet_context(self) -> MeetMetadata | None:
+        """Active Google Meet metadata or None."""
+        return self._current_meet_context
+
+    @property
+    def pending_meet_context(self) -> MeetMetadata | None:
+        """Pending Google Meet metadata awaiting recording start or None."""
+        return self._pending_meet_context
+
+    @property
+    def session_meet_metadata(self) -> MeetMetadata | None:
+        """Meeting metadata associated with the current or last session."""
+        return self._session_meet_metadata
+
+    @property
+    def bridge_connected(self) -> bool:
+        """True if the local bridge is active and accepting connections."""
+        return self._bridge_connected
+
+    @property
+    def bridge_status_message(self) -> str:
+        """Human-readable bridge connectivity status."""
+        return self._bridge_status_message
+
+    def on_meeting_detected(self, metadata: MeetMetadata) -> None:
+        """Handle Google Meet page detection."""
+        logger.info(
+            "Controller received meeting detected: %s (%s)",
+            metadata.title,
+            metadata.meeting_code,
+        )
+        self._pending_meet_context = metadata
+        if self._state in (CaptureState.RECORDING, CaptureState.PAUSED, CaptureState.REBINDING):
+            self._current_meet_context = metadata
+            self._session_meet_metadata = metadata
+        self.meet_context_changed.emit(self._current_meet_context or self._pending_meet_context)
+
+    def on_meeting_started(self, metadata: MeetMetadata) -> None:
+        """Handle active call entry."""
+        logger.info(
+            "Controller received meeting started: %s (%s)",
+            metadata.title,
+            metadata.meeting_code,
+        )
+        self._current_meet_context = metadata
+        self._session_meet_metadata = metadata
+        if self._state not in (CaptureState.RECORDING, CaptureState.PAUSED, CaptureState.REBINDING):
+            self._pending_meet_context = metadata
+        self.meet_context_changed.emit(metadata)
+
+    def on_meeting_ended(self, metadata: MeetMetadata) -> None:
+        """Handle call termination or page exit.
+
+        Safe MVP behavior: Never stop recording automatically purely because
+        the browser emitted MEETING_ENDED. Recording remains user-directed.
+        """
+        logger.info(
+            "Controller received meeting ended: %s (%s)",
+            metadata.title,
+            metadata.meeting_code,
+        )
+        if self._current_meet_context is not None:
+            self._session_meet_metadata = metadata
+        self._pending_meet_context = None
+        self.meet_context_changed.emit(self._current_meet_context)
+
+    def on_bridge_status_changed(self, is_connected: bool, message: str) -> None:
+        """Handle updates to bridge server connectivity status."""
+        self._bridge_connected = is_connected
+        self._bridge_status_message = message
+        self.bridge_status_changed.emit(is_connected, message)
+
+    def clear_meet_context(self) -> None:
+        """Clear active and pending Google Meet context."""
+        self._current_meet_context = None
+        self._pending_meet_context = None
+        self.meet_context_changed.emit(None)
+
+    def get_session_metadata(self) -> dict[str, Any]:
+        """Return metadata dictionary for the current or last completed recording session."""
+        if self._session_meet_metadata is not None:
+            return {
+                "title": self._session_meet_metadata.title,
+                "source": {
+                    "platform": "google-meet",
+                    "url": self._session_meet_metadata.url,
+                    "meeting_code": self._session_meet_metadata.meeting_code,
+                    "detected_at": self._session_meet_metadata.detected_at,
+                    "browser": self._session_meet_metadata.browser,
+                },
+            }
+        return {
+            "title": "Meeting",
+            "source": {"platform": "manual"},
+        }

@@ -112,6 +112,17 @@ def get_toolbar_stylesheet() -> str:
         max-height: 8px;
     }}
 
+    QLabel#meetChip {{
+        font-family: {FONT_FAMILY};
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 2px 6px;
+        background-color: {COLOR_BG_SURFACE};
+        color: {COLOR_TEXT_SECONDARY};
+        border: 1px solid {COLOR_BORDER_DEFAULT};
+    }}
+
     /* Base control button styling */
     QToolButton, QPushButton {{
         font-family: {FONT_FAMILY};

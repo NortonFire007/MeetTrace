@@ -9,10 +9,14 @@ from __future__ import annotations
 import logging
 import signal
 import sys
+from typing import Any
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
+from meettrace.bridge.adapter import MeetBridgeQtAdapter
+from meettrace.bridge.server import BridgeServer
+from meettrace.bridge.token import get_or_create_bridge_token
 from meettrace.capture.protocol import AudioCapture
 from meettrace.capture.service import AudioCaptureService
 from meettrace.config import load_dotenv
@@ -33,6 +37,8 @@ class MeetTraceApp:
         self,
         capture_service: AudioCapture | None = None,
         repository: MeetingRepository | None = None,
+        bridge_server: BridgeServer | None = None,
+        start_bridge: bool = True,
         qapp: QApplication | None = None,
     ) -> None:
         # Load environment variables from .env if present
@@ -67,6 +73,35 @@ class MeetTraceApp:
             on_open=self.show_main_window,
             on_exit=self.exit,
         )
+
+        # Initialize Google Meet localhost bridge adapter and HTTP server
+        self._bridge_token = get_or_create_bridge_token()
+        self._bridge_adapter = MeetBridgeQtAdapter(self._toolbar)
+        self._bridge_adapter.meeting_detected.connect(self._controller.on_meeting_detected)
+        self._bridge_adapter.meeting_started.connect(self._controller.on_meeting_started)
+        self._bridge_adapter.meeting_ended.connect(self._controller.on_meeting_ended)
+        self._bridge_adapter.bridge_status_changed.connect(
+            self._controller.on_bridge_status_changed
+        )
+
+        if bridge_server is not None:
+            self._bridge_server = bridge_server
+        else:
+            self._bridge_server = BridgeServer(
+                token=self._bridge_token,
+                on_event=self._bridge_adapter.handle_event,
+                get_status=self._get_bridge_status,
+            )
+
+        if start_bridge:
+            bridge_started = self._bridge_server.start()
+            status_msg = (
+                f"Active on 127.0.0.1:{self._bridge_server.port}"
+                if bridge_started
+                else (self._bridge_server.last_error or "Bridge server unavailable")
+            )
+            self._bridge_adapter.set_bridge_status(bridge_started, status_msg)
+            self._main_window.settings_view.set_bridge_status(bridge_started, status_msg)
 
         # Allow terminal Ctrl+C (SIGINT) to be caught gracefully by Python
         self._sigint_timer = QTimer(self._toolbar)
@@ -116,6 +151,14 @@ class MeetTraceApp:
         """Refresh meetings catalog and views in the main window."""
         self._main_window.refresh_meetings()
 
+    def _get_bridge_status(self) -> dict[str, Any]:
+        """Query desktop app operational state for the extension status check."""
+        return {
+            "recording_state": self._controller.state.value,
+            "elapsed_seconds": self._controller.elapsed_seconds,
+            "has_meet_context": self._controller.current_meet_context is not None,
+        }
+
     def exit(self) -> None:
         """Perform clean application shutdown."""
         logger.info("MeetTraceApp shutting down cleanly...")
@@ -125,6 +168,7 @@ class MeetTraceApp:
             except (OSError, RuntimeError, ValueError) as exc:
                 logger.debug("Error stopping capture during shutdown: %s", exc)
 
+        self._bridge_server.stop()
         self._controller.cleanup()
         self._tray_manager.cleanup()
         self._main_window.close()
@@ -166,6 +210,16 @@ class MeetTraceApp:
     def repository(self) -> MeetingRepository:
         """Return the meeting repository instance."""
         return self._repository
+
+    @property
+    def bridge_server(self) -> BridgeServer:
+        """Return the localhost bridge server instance."""
+        return self._bridge_server
+
+    @property
+    def bridge_adapter(self) -> MeetBridgeQtAdapter:
+        """Return the bridge Qt adapter instance."""
+        return self._bridge_adapter
 
 
 def main() -> int:

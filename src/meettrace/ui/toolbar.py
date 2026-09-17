@@ -56,6 +56,7 @@ class FloatingRecordingToolbar(QWidget):
         self._apply_theme()
         self._connect_signals()
         self._update_state_ui(self._controller.state)
+        self._update_meet_ui()
 
     def _init_window_attributes(self) -> None:
         """Configure Qt window flags and attributes for a non-activating floating utility tool."""
@@ -110,7 +111,15 @@ class FloatingRecordingToolbar(QWidget):
         self._timer_label.setVisible(False)
         self._content_layout.addWidget(self._timer_label)
 
-        # 4. Action buttons container
+        # 4. Google Meet integration chip
+        self._meet_chip = QLabel("Meet: Standby", self._container)
+        self._meet_chip.setObjectName("meetChip")
+        self._meet_chip.setToolTip(
+            "Google Meet integration: Not detected (Manual recording fully functional)"
+        )
+        self._content_layout.addWidget(self._meet_chip)
+
+        # 5. Action buttons container
         self._controls_widget = QWidget(self._container)
         self._controls_layout = QHBoxLayout(self._controls_widget)
         self._controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -171,6 +180,8 @@ class FloatingRecordingToolbar(QWidget):
         self._controller.state_changed.connect(self._update_state_ui)
         self._controller.elapsed_time_changed.connect(self._update_elapsed_time)
         self._controller.error_occurred.connect(self._on_error_occurred)
+        self._controller.meet_context_changed.connect(self._on_meet_context_changed)
+        self._controller.bridge_status_changed.connect(self._on_bridge_status_changed)
 
     # -------------------------------------------------------------------------
     # Dragging implementation without stealing keyboard focus
@@ -310,22 +321,64 @@ class FloatingRecordingToolbar(QWidget):
         """Handle user click on Stop button."""
         self._controller.stop()
 
+    def _on_meet_context_changed(self, _metadata: object) -> None:
+        """Update Google Meet chip when meet context changes."""
+        self._update_meet_ui()
+
+    def _on_bridge_status_changed(self, _is_connected: bool, _message: str) -> None:
+        """Update Google Meet chip when bridge status changes."""
+        self._update_meet_ui()
+
+    def _update_meet_ui(self) -> None:
+        """Update Google Meet chip text, styling, and tooltip."""
+        ctx = self._controller.current_meet_context or self._controller.pending_meet_context
+        if ctx is not None:
+            code_str = f" ({ctx.meeting_code})" if ctx.meeting_code else ""
+            self._meet_chip.setText(f"Meet{code_str}")
+            self._meet_chip.setToolTip(
+                f"Google Meet integration: Connected\nTitle: {ctx.title}\nURL: {ctx.url}"
+            )
+            self._meet_chip.setStyleSheet(
+                "background-color: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;"
+            )
+        elif self._controller.bridge_connected:
+            self._meet_chip.setText("Meet: Ready")
+            self._meet_chip.setToolTip(
+                f"Google Meet integration: Connected ({self._controller.bridge_status_message})\nWaiting for Google Meet tab."
+            )
+            self._meet_chip.setStyleSheet("")
+        else:
+            self._meet_chip.setText("Meet: Standby")
+            self._meet_chip.setToolTip(
+                "Google Meet integration: Not detected (Manual recording fully functional)"
+            )
+            self._meet_chip.setStyleSheet("")
+        self._container.adjustSize()
+        self.adjustSize()
+
     def toggle_collapse(self) -> None:
         """Toggle between full controls and compact pill mode."""
         self._is_collapsed = not self._is_collapsed
         if self._is_collapsed:
             self._controls_widget.setVisible(False)
             self._open_history_button.setVisible(False)
+            self._meet_chip.setVisible(False)
             self._collapse_button.setText("▸")
             self._collapse_button.setToolTip("Expand toolbar")
         else:
             self._controls_widget.setVisible(True)
             self._open_history_button.setVisible(True)
+            self._meet_chip.setVisible(True)
             self._collapse_button.setText("◂")
             self._collapse_button.setToolTip("Collapse toolbar")
 
         self._container.adjustSize()
         self.adjustSize()
+
+    @property
+    def meet_chip(self) -> QLabel:
+        """Return the Google Meet status chip widget."""
+        return self._meet_chip
 
     @property
     def open_history_button(self) -> QToolButton:
