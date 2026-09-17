@@ -15,7 +15,9 @@ from PySide6.QtWidgets import QApplication
 
 from meettrace.capture.protocol import AudioCapture
 from meettrace.capture.service import AudioCaptureService
+from meettrace.storage.repository import MeetingRepository
 from meettrace.ui.controller import RecordingSessionController
+from meettrace.ui.main_window import MainWindow
 from meettrace.ui.state import can_stop_recording
 from meettrace.ui.toolbar import FloatingRecordingToolbar
 from meettrace.ui.tray import SystemTrayManager
@@ -29,6 +31,7 @@ class MeetTraceApp:
     def __init__(
         self,
         capture_service: AudioCapture | None = None,
+        repository: MeetingRepository | None = None,
         qapp: QApplication | None = None,
     ) -> None:
         # Initialize or reuse QApplication instance
@@ -45,14 +48,19 @@ class MeetTraceApp:
         )
         self._controller = RecordingSessionController(self._capture_service)
 
+        # Initialize meeting repository and main window
+        self._repository = repository if repository is not None else MeetingRepository()
+        self._main_window = MainWindow(self._repository)
+
         # Initialize floating toolbar utility overlay
         self._toolbar = FloatingRecordingToolbar(self._controller)
         self._position_toolbar_default()
+        self._toolbar.open_history_requested.connect(self.show_main_window)
 
-        # Initialize system tray integration
+        # Initialize system tray integration: "Open MeetTrace" opens main window
         self._tray_manager = SystemTrayManager(
             controller=self._controller,
-            on_open=self.show_toolbar,
+            on_open=self.show_main_window,
             on_exit=self.exit,
         )
 
@@ -90,6 +98,20 @@ class MeetTraceApp:
         """Hide the floating toolbar."""
         self._toolbar.hide()
 
+    def show_main_window(self) -> None:
+        """Display the main MeetTrace history/reader window and bring it to focus."""
+        self._main_window.show()
+        self._main_window.raise_()
+        self._main_window.activateWindow()
+
+    def hide_main_window(self) -> None:
+        """Hide the main MeetTrace history/reader window."""
+        self._main_window.hide()
+
+    def refresh_history(self) -> None:
+        """Refresh meetings catalog and views in the main window."""
+        self._main_window.refresh_meetings()
+
     def exit(self) -> None:
         """Perform clean application shutdown."""
         logger.info("MeetTraceApp shutting down cleanly...")
@@ -101,6 +123,7 @@ class MeetTraceApp:
 
         self._controller.cleanup()
         self._tray_manager.cleanup()
+        self._main_window.close()
         self._toolbar.close()
         self._app.quit()
 
@@ -129,6 +152,16 @@ class MeetTraceApp:
     def tray_manager(self) -> SystemTrayManager:
         """Return the system tray manager instance."""
         return self._tray_manager
+
+    @property
+    def main_window(self) -> MainWindow:
+        """Return the main window instance."""
+        return self._main_window
+
+    @property
+    def repository(self) -> MeetingRepository:
+        """Return the meeting repository instance."""
+        return self._repository
 
 
 def main() -> int:

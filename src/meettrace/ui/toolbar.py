@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Final
 
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QColor, QMouseEvent
 from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
@@ -38,6 +38,8 @@ CONTAINER_MARGIN: Final[int] = 8
 
 class FloatingRecordingToolbar(QWidget):
     """Compact, draggable, always-on-top recording toolbar overlay."""
+
+    open_history_requested = Signal()
 
     def __init__(
         self,
@@ -140,7 +142,16 @@ class FloatingRecordingToolbar(QWidget):
 
         self._content_layout.addWidget(self._controls_widget)
 
-        # 5. Compact / Collapse toggle button
+        # 5. Open MeetTrace history/main window button
+        self._open_history_button = QToolButton(self._container)
+        self._open_history_button.setObjectName("ghostButton")
+        self._open_history_button.setText("📋")
+        self._open_history_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._open_history_button.setToolTip("Open MeetTrace window")
+        self._open_history_button.clicked.connect(self.open_history_requested.emit)
+        self._content_layout.addWidget(self._open_history_button)
+
+        # 6. Compact / Collapse toggle button
         self._collapse_button = QToolButton(self._container)
         self._collapse_button.setObjectName("ghostButton")
         self._collapse_button.setText("◂")
@@ -304,15 +315,22 @@ class FloatingRecordingToolbar(QWidget):
         self._is_collapsed = not self._is_collapsed
         if self._is_collapsed:
             self._controls_widget.setVisible(False)
+            self._open_history_button.setVisible(False)
             self._collapse_button.setText("▸")
             self._collapse_button.setToolTip("Expand toolbar")
         else:
             self._controls_widget.setVisible(True)
+            self._open_history_button.setVisible(True)
             self._collapse_button.setText("◂")
             self._collapse_button.setToolTip("Collapse toolbar")
 
         self._container.adjustSize()
         self.adjustSize()
+
+    @property
+    def open_history_button(self) -> QToolButton:
+        """Return open history button instance for testing."""
+        return self._open_history_button
 
     @property
     def is_collapsed(self) -> bool:

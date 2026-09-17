@@ -18,6 +18,10 @@ from meettrace.storage.models import (
     PersistedTranscript,
     PersistedWord,
 )
+from meettrace.storage.repository import (
+    MeetingRepository,
+    parse_frontmatter_and_title,
+)
 from meettrace.storage.store import (
     MeetingArtifactStore,
     get_default_storage_root,
@@ -33,6 +37,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "MeetingArtifactStore",
     "MeetingMetadata",
+    "MeetingRepository",
     "PersistedSegment",
     "PersistedTranscript",
     "PersistedWord",
@@ -42,6 +47,7 @@ __all__ = [
     "format_timestamp_ms",
     "generate_meeting_id",
     "get_default_storage_root",
+    "parse_frontmatter_and_title",
     "render_meeting_markdown",
     "validate_meeting_id",
 ]

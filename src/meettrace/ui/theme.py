@@ -216,3 +216,161 @@ def get_toolbar_stylesheet() -> str:
         padding: 4px 8px;
     }}
     """
+
+
+def get_main_window_stylesheet() -> str:
+    """Generate global application stylesheet for the main window and views."""
+    return f"""
+    QMainWindow, QWidget#mainRoot {{
+        background-color: {COLOR_BG_CARD};
+        color: {COLOR_TEXT_PRIMARY};
+        font-family: {FONT_FAMILY};
+    }}
+
+    QWidget#sidebarRoot {{
+        background-color: {COLOR_BG_SURFACE};
+        border-right: 1px solid {COLOR_BORDER_DEFAULT};
+    }}
+
+    QLabel#appName {{
+        font-family: {FONT_FAMILY};
+        font-size: 15px;
+        font-weight: 700;
+        color: {COLOR_TEXT_PRIMARY};
+    }}
+
+    QLabel#appSubtitle {{
+        font-family: {FONT_FAMILY};
+        font-size: 11px;
+        font-weight: 500;
+        color: {COLOR_TEXT_MUTED};
+    }}
+
+    QPushButton#navButton {{
+        text-align: left;
+        padding: 9px 14px;
+        border-radius: 7px;
+        font-family: {FONT_FAMILY};
+        font-size: 13px;
+        font-weight: 500;
+        color: {COLOR_TEXT_SECONDARY};
+        background-color: transparent;
+        border: 1px solid transparent;
+    }}
+    QPushButton#navButton:hover {{
+        background-color: {COLOR_BG_SURFACE_HOVER};
+        color: {COLOR_TEXT_PRIMARY};
+    }}
+    QPushButton#navButton:checked, QPushButton#navButton[active="true"] {{
+        background-color: {COLOR_PRIMARY_SOFT};
+        color: {COLOR_PRIMARY};
+        font-weight: 600;
+        border: 1px solid {COLOR_PRIMARY_SOFT_BORDER};
+    }}
+
+    /* Scrollbars */
+    QScrollBar:vertical {{
+        border: none;
+        background: transparent;
+        width: 8px;
+        margin: 0px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: #CBD5E1;
+        min-height: 24px;
+        border-radius: 4px;
+    }}
+    QScrollBar::handle:vertical:hover {{
+        background: #94A3B8;
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
+    }}
+    QScrollBar:horizontal {{
+        height: 0px;
+    }}
+    """
+
+
+def get_search_input_stylesheet() -> str:
+    """Stylesheet for clean search input field."""
+    return f"""
+    QLineEdit#searchMeetingsInput {{
+        background-color: {COLOR_BG_CARD};
+        color: {COLOR_TEXT_PRIMARY};
+        font-family: {FONT_FAMILY};
+        font-size: 13px;
+        border: 1px solid {COLOR_BORDER_DEFAULT};
+        border-radius: 8px;
+        padding: 7px 12px;
+        selection-background-color: {COLOR_PRIMARY_SOFT};
+        selection-color: {COLOR_PRIMARY};
+    }}
+    QLineEdit#searchMeetingsInput:focus {{
+        border: 1px solid {COLOR_PRIMARY};
+    }}
+    """
+
+
+def get_meeting_card_stylesheet(selected: bool = False) -> str:
+    """Stylesheet for meeting row items in the catalog list."""
+    border = COLOR_PRIMARY if selected else COLOR_BORDER_DEFAULT
+    bg = COLOR_PRIMARY_SOFT if selected else COLOR_BG_CARD
+    return f"""
+    QFrame#meetingCard {{
+        background-color: {bg};
+        border: 1px solid {border};
+        border-radius: 9px;
+        padding: 10px 14px;
+    }}
+    QFrame#meetingCard:hover {{
+        background-color: #FAF9FF;
+        border: 1px solid #CBD5E1;
+    }}
+    """
+
+
+def get_reader_html_stylesheet() -> str:
+    """Return CSS styles embedded into the QTextBrowser for transcript reading."""
+    return f"""
+    <style>
+        body {{
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 13.5px;
+            line-height: 1.65;
+            color: #1E293B;
+            background-color: #FFFFFF;
+            margin: 16px 20px;
+        }}
+        .segment {{
+            margin-bottom: 12px;
+        }}
+        .timestamp {{
+            font-family: 'Consolas', 'Cascadia Code', monospace;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: {COLOR_PRIMARY};
+            background-color: {COLOR_PRIMARY_SOFT};
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }}
+        .spoken-text {{
+            color: #0F172A;
+            font-weight: 400;
+        }}
+        .section-header {{
+            font-size: 15px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-top: 18px;
+            margin-bottom: 10px;
+        }}
+        .empty-transcript {{
+            color: #94A3B8;
+            font-style: italic;
+            padding: 24px;
+            text-align: center;
+        }}
+    </style>
+    """

@@ -11,7 +11,7 @@ from meettrace.ui.tray import SystemTrayManager, create_tray_icon
 from tests.test_ui_controller import DummyAudioCapture
 
 
-def test_create_tray_icon() -> None:
+def test_create_tray_icon(qapp) -> None:
     """Verify programmatic tray icon generation for idle and active recording states."""
     icon_idle = create_tray_icon(is_recording=False)
     assert not icon_idle.isNull()
