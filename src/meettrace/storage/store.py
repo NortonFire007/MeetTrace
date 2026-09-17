@@ -188,6 +188,17 @@ class MeetingArtifactStore:
         if duration_ms <= 0 and segments:
             duration_ms = max(s.end_ms for s in segments)
 
+        if meta.segment_count <= 0 and segments:
+            meta = TranscriptMetadata(
+                session_id=meta.session_id,
+                dominant_language=meta.dominant_language,
+                detected_languages=meta.detected_languages,
+                model_name=meta.model_name,
+                total_duration_ms=duration_ms,
+                segment_count=len(segments),
+                created_at=meta.created_at or now_utc.isoformat(),
+            )
+
         # Build domain models
         persisted_transcript = PersistedTranscript.from_segments(
             meeting_id=meeting_id,
@@ -271,6 +282,85 @@ class MeetingArtifactStore:
             schema_version=transcript.schema_version,
             created_at=meta.created_at,
         )
+
+    def save_summary(
+        self,
+        meeting_id: str,
+        summary: Any,
+        meeting_dir: Path | None = None,
+    ) -> tuple[Path, Path]:
+        """Atomically persist meeting summary in transcript.json and meeting.md.
+
+        In accordance with durability requirements, the raw transcript segments
+        remain completely unchanged and immutable.
+
+        Args:
+            meeting_id: Unique meeting identifier.
+            summary: MeetingSummary domain model to persist.
+            meeting_dir: Optional pre-resolved meeting directory.
+
+        Returns:
+            Tuple of (Path to transcript.json, Path to meeting.md).
+        """
+        from meettrace.storage.repository import parse_frontmatter_and_title
+
+        validate_meeting_id(meeting_id)
+        target_dir = meeting_dir or self.resolve_meeting_dir(meeting_id)
+        if not target_dir.is_dir():
+            raise FileNotFoundError(f"Meeting directory not found: {target_dir}")
+
+        # 1. Load existing transcript.json to preserve original metadata & raw segments
+        transcript = self.load_transcript(target_dir)
+
+        updated_transcript = PersistedTranscript(
+            meeting_id=transcript.meeting_id,
+            metadata=transcript.metadata,
+            segments=transcript.segments,
+            schema_version=transcript.schema_version,
+            summary=summary.to_dict(),
+        )
+
+        transcript_path = target_dir / "transcript.json"
+        atomic_write_json(transcript_path, updated_transcript.to_dict(), indent=2)
+        logger.info("Saved updated transcript JSON with summary: %s", transcript_path)
+
+        # 2. Render and save updated meeting.md with summary sections
+        markdown_path = target_dir / "meeting.md"
+        meta = self.load_metadata(target_dir)
+
+        if markdown_path.is_file():
+            try:
+                fm, title = parse_frontmatter_and_title(markdown_path.read_text(encoding="utf-8"))
+                if title and title != "Meeting":
+                    source_dict = (
+                        {"platform": fm["platform"]} if fm.get("platform") else meta.source
+                    )
+                    meta = MeetingMetadata(
+                        meeting_id=meta.meeting_id,
+                        title=title,
+                        started_at=fm.get("started_at", meta.started_at),
+                        ended_at=fm.get("ended_at", meta.ended_at),
+                        duration_ms=meta.duration_ms,
+                        dominant_language=meta.dominant_language,
+                        detected_languages=meta.detected_languages,
+                        source=source_dict,
+                        model_name=meta.model_name,
+                        segment_count=meta.segment_count,
+                        schema_version=meta.schema_version,
+                        created_at=meta.created_at,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Could not extract frontmatter for markdown update: %s", exc)
+
+        markdown_content = render_meeting_markdown(
+            metadata=meta,
+            segments=transcript.segments,
+            summary_sections=summary.to_sections_dict(),
+        )
+        atomic_write_text(markdown_path, markdown_content, encoding="utf-8")
+        logger.info("Saved updated meeting Markdown with summary: %s", markdown_path)
+
+        return transcript_path, markdown_path
 
     def _extract_datetime(
         self,

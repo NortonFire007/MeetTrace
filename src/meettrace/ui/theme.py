@@ -336,7 +336,7 @@ def get_reader_html_stylesheet() -> str:
     <style>
         body {{
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 13.5px;
+            font-size: 14px;
             line-height: 1.65;
             color: #1E293B;
             background-color: #FFFFFF;
@@ -347,7 +347,7 @@ def get_reader_html_stylesheet() -> str:
         }}
         .timestamp {{
             font-family: 'Consolas', 'Cascadia Code', monospace;
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: 600;
             color: {COLOR_PRIMARY};
             background-color: {COLOR_PRIMARY_SOFT};
@@ -365,6 +365,52 @@ def get_reader_html_stylesheet() -> str:
             color: #0F172A;
             margin-top: 18px;
             margin-bottom: 10px;
+        }}
+        .summary-card {{
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }}
+        .summary-badge {{
+            font-size: 11px;
+            font-weight: 700;
+            color: #7C5CFC;
+            background-color: #F1EEFE;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }}
+        .summary-section {{
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }}
+        .summary-section-title {{
+            font-size: 13px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 4px;
+        }}
+        .summary-text {{
+            font-size: 13px;
+            color: #334155;
+            line-height: 1.5;
+        }}
+        .summary-list {{
+            margin-top: 4px;
+            margin-bottom: 6px;
+            margin-left: 20px;
+            color: #334155;
+            font-size: 13px;
+        }}
+        .summary-list li {{
+            margin-bottom: 4px;
+        }}
+        .section-divider {{
+            border-top: 1px solid #E2E8F0;
+            margin-top: 20px;
+            margin-bottom: 16px;
         }}
         .empty-transcript {{
             color: #94A3B8;

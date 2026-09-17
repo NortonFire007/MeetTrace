@@ -406,3 +406,16 @@ class MeetingRepository:
         except OSError as exc:
             logger.warning("Failed to read markdown for %s: %s", meeting_id, exc)
             return None
+
+    def get_summary(self, meeting_id: str) -> Any:
+        """Retrieve persisted MeetingSummary for a meeting if available."""
+        from meettrace.summary.models import MeetingSummary
+
+        transcript = self.get_transcript(meeting_id)
+        if transcript is None or not transcript.summary:
+            return None
+        try:
+            return MeetingSummary.from_dict(transcript.summary)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to parse summary for %s: %s", meeting_id, exc)
+            return None

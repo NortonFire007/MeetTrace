@@ -62,7 +62,7 @@ class HomeView(QWidget):
             self,
         )
         desc_label.setStyleSheet(
-            f"font-family: {FONT_FAMILY}; font-size: 13.5px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.5;"
+            f"font-family: {FONT_FAMILY}; font-size: 13px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.5;"
         )
         desc_label.setWordWrap(True)
         layout.addWidget(desc_label)
@@ -94,7 +94,7 @@ class HomeView(QWidget):
             card,
         )
         card_desc.setStyleSheet(
-            f"font-family: {FONT_FAMILY}; font-size: 12.5px; color: {COLOR_TEXT_SECONDARY};"
+            f"font-family: {FONT_FAMILY}; font-size: 12px; color: {COLOR_TEXT_SECONDARY};"
         )
         card_desc.setWordWrap(True)
         card_layout.addWidget(card_desc)
@@ -108,12 +108,13 @@ class HomeView(QWidget):
                 background-color: {COLOR_PRIMARY};
                 color: {COLOR_TEXT_WHITE};
                 font-family: {FONT_FAMILY};
-                font-size: 12.5px;
+                font-size: 12px;
                 font-weight: 600;
                 border: 1px solid {COLOR_PRIMARY};
                 border-radius: 6px;
                 padding: 7px 16px;
             }}
+
             QPushButton:hover {{
                 background-color: {COLOR_PRIMARY_HOVER};
                 border: 1px solid {COLOR_PRIMARY_HOVER};

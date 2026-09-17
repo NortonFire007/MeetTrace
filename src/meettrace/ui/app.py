@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication
 
 from meettrace.capture.protocol import AudioCapture
 from meettrace.capture.service import AudioCaptureService
+from meettrace.config import load_dotenv
 from meettrace.storage.repository import MeetingRepository
 from meettrace.ui.controller import RecordingSessionController
 from meettrace.ui.main_window import MainWindow
@@ -34,6 +35,9 @@ class MeetTraceApp:
         repository: MeetingRepository | None = None,
         qapp: QApplication | None = None,
     ) -> None:
+        # Load environment variables from .env if present
+        load_dotenv()
+
         # Initialize or reuse QApplication instance
         self._app = qapp or QApplication.instance() or QApplication(sys.argv)
         self._app.setApplicationName("MeetTrace")

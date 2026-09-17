@@ -128,6 +128,7 @@ class PersistedTranscript:
     metadata: TranscriptMetadata
     segments: tuple[PersistedSegment, ...] = field(default_factory=tuple)
     schema_version: str = SCHEMA_VERSION
+    summary: dict[str, Any] | None = None
 
     @classmethod
     def from_segments(
@@ -136,6 +137,7 @@ class PersistedTranscript:
         metadata: TranscriptMetadata,
         segments: Sequence[TranscriptSegment | PersistedSegment],
         schema_version: str = SCHEMA_VERSION,
+        summary: dict[str, Any] | None = None,
     ) -> PersistedTranscript:
         converted: list[PersistedSegment] = []
         for s in segments:
@@ -150,10 +152,11 @@ class PersistedTranscript:
             metadata=metadata,
             segments=tuple(converted),
             schema_version=schema_version,
+            summary=summary,
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "schema_version": self.schema_version,
             "meeting_id": self.meeting_id,
             "metadata": {
@@ -167,6 +170,9 @@ class PersistedTranscript:
             },
             "segments": [s.to_dict() for s in self.segments],
         }
+        if self.summary is not None:
+            result["summary"] = self.summary
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PersistedTranscript:
@@ -186,6 +192,7 @@ class PersistedTranscript:
             metadata=metadata,
             segments=segments,
             schema_version=str(data.get("schema_version", SCHEMA_VERSION)),
+            summary=data.get("summary"),
         )
 
 
